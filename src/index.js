@@ -18,23 +18,56 @@ if (typeof global.WebSocket === 'undefined') {
 // NOTE: Gemini key may be provided either as GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY
 // (the latter is used by newer Google AI SDK setups).
 const missing = [];
-if (!process.env.BOT_PRIVATE_KEY) missing.push('BOT_PRIVATE_KEY');
-if (!process.env.GEMINI_API_KEY && !process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+
+const isSet = (v) => typeof v === 'string' && v.trim().length > 0;
+const looksLikeUnexpandedRef = (v) =>
+  typeof v === 'string' &&
+  v.trim().startsWith('$') &&
+  v.includes('GEMINI_API_KEY');
+
+const botPrivateKey = process.env.BOT_PRIVATE_KEY;
+const geminiApiKey = process.env.GEMINI_API_KEY;
+const googleGenerativeKeyRaw = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+const googleGenerativeKey = looksLikeUnexpandedRef(googleGenerativeKeyRaw)
+  ? ''
+  : googleGenerativeKeyRaw;
+const nostrRelaysRaw = process.env.NOSTR_RELAYS;
+
+if (!isSet(botPrivateKey)) missing.push('BOT_PRIVATE_KEY');
+if (!isSet(geminiApiKey) && !isSet(googleGenerativeKey)) {
   missing.push('GEMINI_API_KEY (or GOOGLE_GENERATIVE_AI_API_KEY)');
 }
+if (!isSet(nostrRelaysRaw)) missing.push('NOSTR_RELAYS');
 
 if (missing.length > 0) {
   logger.error(`Missing required environment variables: ${missing.join(', ')}`);
+  if (looksLikeUnexpandedRef(googleGenerativeKeyRaw)) {
+    logger.info(
+      'It looks like GOOGLE_GENERATIVE_AI_API_KEY is set to an unexpanded reference (e.g. "$GEMINI_API_KEY"). ' +
+        'In .env files, variable expansion is not performed; set the key explicitly.'
+    );
+  }
+  logger.info('Please check .env file and set all required variables');
+  process.exit(1);
+}
+
+const relays = nostrRelaysRaw
+  .split(',')
+  .map(r => r.trim())
+  .filter(Boolean);
+
+if (relays.length === 0) {
+  logger.error('Missing required environment variables: NOSTR_RELAYS');
   logger.info('Please check .env file and set all required variables');
   process.exit(1);
 }
 
 // Initialize bot with scalability configurations
 const bot = new NostrBot({
-  privateKey: process.env.BOT_PRIVATE_KEY,
-  geminiApiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+  privateKey: botPrivateKey,
+  geminiApiKey: geminiApiKey || googleGenerativeKey,
   botName: process.env.BOT_NAME || 'ZapAI',
-  relays: process.env.NOSTR_RELAYS.split(','),
+  relays,
   // Default to 0 for low-latency responses. Set BOT_RESPONSE_DELAY (ms) if you want a "typing" feel.
   responseDelay: Number.isFinite(parseInt(process.env.BOT_RESPONSE_DELAY))
     ? parseInt(process.env.BOT_RESPONSE_DELAY)

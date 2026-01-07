@@ -7,12 +7,21 @@ services:
     restart: unless-stopped
     user: "1000:1000"
 
-    # Always load env vars from local .env (prevents "variable is not set" warnings)
+    # Load runtime env vars from local .env (must be next to docker-compose.yml).
+    # Note: Docker Compose variable substitution (${VAR}) also relies on a local .env
+    # file (or exported shell env vars). If you're seeing "variable is not set",
+    # ensure you're running `docker compose` from this directory and `.env` exists.
     env_file:
       - .env
     
     # Environment variables
     environment:
+      # Required
+      BOT_PRIVATE_KEY: ${BOT_PRIVATE_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # Optional alias used by some Google AI SDK setups
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY:-}
+
       BOT_NAME: ${BOT_NAME:-ZapAI}
       NOSTR_RELAYS: ${NOSTR_RELAYS}
       # Default 0 for fastest responses; override in .env if desired

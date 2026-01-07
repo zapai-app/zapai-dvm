@@ -47,6 +47,10 @@ docker rm zapai-bot
 
 Make sure your `.env` file is properly configured:
 
+> Note:
+> - When using Docker Compose, `.env` must be in the same directory as `docker-compose.yml`.
+> - `.env` files do **not** expand variables (e.g., `FOO=$BAR` stays literal). Set the Gemini key explicitly.
+
 ```env
 BOT_PRIVATE_KEY=nsec1...
 GEMINI_API_KEY=your_api_key

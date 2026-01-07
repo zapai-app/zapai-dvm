@@ -58,6 +58,11 @@ GEMINI_API_KEY=your_gemini_api_key_here
 GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key_here
 NOSTR_RELAYS=wss://relay.nostr.band,wss://relay.damus.io,wss://nos.lol
 
+# Notes
+# - For Docker Compose, `.env` must be in the same folder as `docker-compose.yml`.
+# - In `.env` files, values like `GOOGLE_GENERATIVE_AI_API_KEY=$GEMINI_API_KEY` are NOT expanded.
+#   Set the key explicitly (either `GEMINI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY`).
+
 # Optional - UX / Latency
 # Default 0 for fastest responses; set (ms) if you want a more "natural" delay.
 BOT_RESPONSE_DELAY=0
