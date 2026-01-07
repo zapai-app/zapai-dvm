@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZapAI Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-green: #10b981;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-red: #ef4444;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-box {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-title {
+            font-size: 2em;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.875em;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1em;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.875em;
+            display: none;
+        }
+
+        .dashboard {
+            display: none;
+        }
+
+        .dashboard.active {
+            display: block;
+        }
+
+        .topbar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .topbar-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.875em;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .btn-logout {
+            padding: 8px 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            border-radius: 8px;
+            font-size: 0.875em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            color: var(--text-primary);
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        .section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1.25em;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+            border-radius: 8px;
+            font-size: 0.875em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-top: 20px;
+            padding: 16px;
+        }
+
+        .pagination.hidden {
+            display: none;
+        }
+
+        .pagination-btn {
+            padding: 10px 20px;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid var(--accent-blue);
+            color: var(--accent-blue);
+            border-radius: 8px;
+            font-size: 0.875em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 120px;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: var(--accent-blue);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: var(--text-muted);
+            color: var(--text-muted);
+        }
+
+        .pagination-info {
+            color: var(--text-secondary);
+            font-size: 0.875em;
+            font-weight: 500;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .filters-container {
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .search-box {
+            margin-bottom: 12px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.95em;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            font-size: 0.875em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--accent-blue);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .filter-info {
+            color: var(--text-muted);
+            font-size: 0.8em;
+            text-align: center;
+            min-height: 18px;
+        }
+
+        .messages-container {
+            max-height: 600px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+        }
+
+        .message-item {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .message-item:hover {
+            border-color: var(--accent-blue);
+            transform: translateX(4px);
+        }
+
+        .message-item.user-message {
+            background: rgba(59, 130, 246, 0.03);
+        }
+
+        .message-item.bot-message {
+            background: rgba(16, 185, 129, 0.03);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .message-sender {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sender-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .sender-badge.user {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent-blue);
+        }
+
+        .sender-badge.bot {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .sender-pubkey {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875em;
+            color: var(--text-secondary);
+        }
+
+        .message-time {
+            color: var(--text-muted);
+            font-size: 0.875em;
+        }
+
+        .message-content {
+            color: var(--text-primary);
+            line-height: 1.6;
+            word-wrap: break-word;
+        }
+
+        .reply-to {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 3px solid var(--accent-purple);
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .message-meta {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.75em;
+            color: var(--text-muted);
+        }
+
+        .message-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent-blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .relay-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .relay-table th {
+            background: var(--bg-primary);
+            color: var(--text-secondary);
+            font-size: 0.75em;
+            text-transform: uppercase;
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .relay-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.875em;
+        }
+
+        .relay-table tr:hover {
+            background: var(--bg-primary);
+        }
+
+        .relay-status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .relay-status-dot.connected {
+            background: var(--accent-green);
+        }
+
+        .relay-status-dot.disconnected {
+            background: var(--accent-red);
+        }
+
+        .relay-url {
+            font-family: 'Courier New', monospace;
+            color: var(--accent-blue);
+        }
+    </style>
+</head>
+<body>
+    <div id="loginPage" class="login-container">
+        <div class="login-box">
+            <h1 class="login-title">ZapAI Dashboard</h1>
+            <p class="login-subtitle">Enter password to access dashboard</p>
+            <div id="loginError" class="error-message"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="password" class="form-input" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboardPage" class="dashboard">
+        <div class="topbar">
+            <div class="topbar-title">ZapAI Dashboard</div>
+            <div class="topbar-actions">
+                <div class="status-badge">
+                    <span class="status-dot"></span>
+                    <span>Online</span>
+                </div>
+                <button class="btn-logout" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Uptime</div>
+                    <div class="stat-value" id="uptime">-</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Messages Received</div>
+                    <div class="stat-value" id="messagesReceived">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Messages Sent</div>
+                    <div class="stat-value" id="messagesSent">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Queue Size</div>
+                    <div class="stat-value" id="queueSize">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Relays</div>
+                    <div class="stat-value" id="activeRelays">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Success Rate</div>
+                    <div class="stat-value" id="successRate">N/A</div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Recent Messages</h2>
+                    <button class="refresh-btn" onclick="loadMessages()">🔄 Refresh</button>
+                </div>
+                
+                <div class="filters-container">
+                    <div class="search-box">
+                        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search messages..." onkeyup="applyFilters()">
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">All</button>
+                        <button class="filter-btn" data-filter="user" onclick="setFilter('user')">User</button>
+                        <button class="filter-btn" data-filter="bot" onclick="setFilter('bot')">Bot</button>
+                    </div>
+                    <div class="filter-info" id="filterInfo"></div>
+                </div>
+                
+                <div id="messagesContainer" class="messages-container">
+                    <div class="loading"><div class="spinner"></div>Loading...</div>
+                </div>
+                <div class="pagination hidden" id="pagination">
+                    <button class="pagination-btn" id="prevBtn" onclick="changePage(-1)">← Previous</button>
+                    <span class="pagination-info" id="pageInfo">Page 1 of 1</span>
+                    <button class="pagination-btn" id="nextBtn" onclick="changePage(1)">Next →</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">Relay Status</h2>
+                    <button class="refresh-btn" onclick="loadRelays()">🔄 Refresh</button>
+                </div>
+                <div id="relaysContainer">
+                    <div class="loading"><div class="spinner"></div>Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/check', {credentials: 'include'});
+                const data = await res.json();
+                if (!data.requiresAuth || data.authenticated) {
+                    showDashboard();
+                } else {
+                    showLogin();
+                }
+            } catch (e) {
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loginPage').style.display = 'flex';
+            document.getElementById('dashboardPage').classList.remove('active');
+        }
+
+        function showDashboard() {
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('dashboardPage').classList.add('active');
+            loadDashboardData();
+            setInterval(() => {
+                loadStats();
+                loadMessages();
+                loadRelays();
+            }, 10000);
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('loginError');
+            
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({password})
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showDashboard();
+                } else {
+                    errorDiv.textContent = data.message || 'Invalid password';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (e) {
+                errorDiv.textContent = 'Login failed';
+                errorDiv.style.display = 'block';
+            }
+        });
+
+        async function logout() {
+            await fetch('/api/logout', {method: 'POST', credentials: 'include'});
+            location.reload();
+        }
+
+        function loadDashboardData() {
+            loadStats();
+            loadMessages();
+            loadRelays();
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/status', {credentials: 'include'});
+                const data = await res.json();
+                
+                // Use the uptime value from API (in seconds) or formatted version
+                if (data.stats.uptimeFormatted) {
+                    document.getElementById('uptime').textContent = data.stats.uptimeFormatted;
+                } else if (data.stats.uptime) {
+                    const uptime = data.stats.uptime;
+                    const hours = Math.floor(uptime / 3600);
+                    const minutes = Math.floor((uptime % 3600) / 60);
+                    document.getElementById('uptime').textContent = hours + 'h ' + minutes + 'm';
+                } else {
+                    document.getElementById('uptime').textContent = '-';
+                }
+                
+                document.getElementById('messagesReceived').textContent = data.stats.messagesReceived || 0;
+                document.getElementById('messagesSent').textContent = data.stats.messagesSent || 0;
+                document.getElementById('queueSize').textContent = data.stats.performance?.queueSize || 0;
+                
+                // Display success rate with better handling
+                const successRate = data.stats.performance?.successRate;
+                if (successRate && successRate !== 'N/A') {
+                    document.getElementById('successRate').textContent = successRate;
+                } else if (data.stats.queue?.processed === 0 && data.stats.queue?.failed === 0) {
+                    // No messages processed yet
+                    document.getElementById('successRate').textContent = '100%';
+                } else {
+                    document.getElementById('successRate').textContent = 'N/A';
+                }
+            } catch (e) {
+                console.error('Failed to load stats:', e);
+            }
+        }
+
+        // Pagination and filter variables
+        let allMessages = [];
+        let filteredMessages = [];
+        let currentPage = 1;
+        let currentFilter = 'all';
+        const messagesPerPage = 10;
+
+        async function loadMessages() {
+            const container = document.getElementById('messagesContainer');
+            
+            try {
+                const res = await fetch('/api/messages?limit=100', {credentials: 'include'});
+                allMessages = await res.json();
+                
+                if (allMessages.length === 0) {
+                    container.innerHTML = '<div class="empty-state">💬 No messages yet</div>';
+                    document.getElementById('pagination').classList.add('hidden');
+                    return;
+                }
+                
+                allMessages.sort((a, b) => b.timestamp - a.timestamp);
+                currentPage = 1;
+                applyFilters();
+            } catch (e) {
+                container.innerHTML = '<div class="empty-state">⚠️ Failed to load messages</div>';
+                document.getElementById('pagination').classList.add('hidden');
+            }
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            currentPage = 1;
+            
+            // Update active button
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.filter === filter) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            
+            // Apply role filter
+            filteredMessages = allMessages.filter(msg => {
+                const isBot = msg.role === 'bot' || msg.role === 'assistant';
+                
+                if (currentFilter === 'user' && isBot) return false;
+                if (currentFilter === 'bot' && !isBot) return false;
+                
+                return true;
+            });
+            
+            // Apply search filter
+            if (searchTerm) {
+                filteredMessages = filteredMessages.filter(msg => {
+                    const content = msg.content.toLowerCase();
+                    const sender = (msg.sender || '').toLowerCase();
+                    const role = msg.role.toLowerCase();
+                    
+                    return content.includes(searchTerm) || 
+                           sender.includes(searchTerm) || 
+                           role.includes(searchTerm);
+                });
+            }
+            
+            // Update filter info
+            const filterInfo = document.getElementById('filterInfo');
+            if (searchTerm || currentFilter !== 'all') {
+                filterInfo.textContent = `Showing ${filteredMessages.length} of ${allMessages.length} messages`;
+            } else {
+                filterInfo.textContent = '';
+            }
+            
+            // Reset to first page when filter changes
+            if (currentPage > Math.ceil(filteredMessages.length / messagesPerPage)) {
+                currentPage = 1;
+            }
+            
+            displayMessages();
+        }
+
+        function displayMessages() {
+            const container = document.getElementById('messagesContainer');
+            const totalPages = Math.ceil(filteredMessages.length / messagesPerPage);
+            const start = (currentPage - 1) * messagesPerPage;
+            const end = start + messagesPerPage;
+            const pageMsgs = filteredMessages.slice(start, end);
+            
+            if (filteredMessages.length === 0) {
+                container.innerHTML = '<div class="empty-state">💬 No messages match your filters</div>';
+                document.getElementById('pagination').classList.add('hidden');
+                return;
+            }
+            
+            if (pageMsgs.length === 0) {
+                container.innerHTML = '<div class="empty-state">💬 No messages on this page</div>';
+                return;
+            }
+            
+            container.innerHTML = pageMsgs.map(msg => {
+                const isBot = msg.role === 'bot' || msg.role === 'assistant';
+                const date = new Date(msg.timestamp);
+                const formattedDate = date.toLocaleString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                
+                const senderShort = msg.sender ? 
+                    msg.sender.substring(0, 8) + '...' + msg.sender.substring(msg.sender.length - 8) : 
+                    'Unknown';
+                
+                // Find the question this response is replying to
+                let replyToContent = '';
+                if (msg.replyTo && isBot) {
+                    const replyToMsg = filteredMessages.find(m => m.messageId === msg.replyTo);
+                    if (replyToMsg) {
+                        const shortContent = replyToMsg.content.length > 50 
+                            ? replyToMsg.content.substring(0, 50) + '...' 
+                            : replyToMsg.content;
+                        replyToContent = `<div class="reply-to">↩️ Replying to: "${escapeHtml(shortContent)}"</div>`;
+                    }
+                }
+                
+                return `
+                    <div class="message-item ${isBot ? 'bot-message' : 'user-message'}">
+                        <div class="message-header">
+                            <div class="message-sender">
+                                <span class="sender-badge ${isBot ? 'bot' : 'user'}">${isBot ? 'BOT' : 'USER'}</span>
+                                <span class="sender-pubkey" title="${msg.sender || 'N/A'}">${senderShort}</span>
+                            </div>
+                            <div class="message-time">${formattedDate}</div>
+                        </div>
+                        ${replyToContent}
+                        <div class="message-content">${escapeHtml(msg.content)}</div>
+                        <div class="message-meta">
+                            <span>📝 ${msg.messageType || msg.role}</span>
+                            ${msg.eventKind ? '<span>� ' + (msg.eventKind === 4 ? 'DM' : 'Public') + '</span>' : ''}
+                            ${msg.eventId ? '<span title="' + msg.eventId + '">🆔 ' + msg.eventId.substring(0, 8) + '...</span>' : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Update pagination UI
+            if (totalPages > 1) {
+                document.getElementById('pagination').classList.remove('hidden');
+                document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages} (${filteredMessages.length} filtered)`;
+                document.getElementById('prevBtn').disabled = currentPage === 1;
+                document.getElementById('nextBtn').disabled = currentPage === totalPages;
+            } else {
+                document.getElementById('pagination').classList.add('hidden');
+            }
+        }
+
+        function changePage(delta) {
+            const totalPages = Math.ceil(filteredMessages.length / messagesPerPage);
+            const newPage = currentPage + delta;
+            
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                displayMessages();
+                // Scroll to top of messages
+                document.getElementById('messagesContainer').scrollTop = 0;
+            }
+        }
+
+        async function loadRelays() {
+            const container = document.getElementById('relaysContainer');
+            
+            try {
+                const res = await fetch('/api/relays', {credentials: 'include'});
+                const relays = await res.json();
+                
+                const connectedCount = relays.filter(r => r.connected).length;
+                document.getElementById('activeRelays').textContent = connectedCount;
+                
+                if (relays.length === 0) {
+                    container.innerHTML = '<div class="empty-state">🔌 No relays configured</div>';
+                    return;
+                }
+                
+                container.innerHTML = `
+                    <table class="relay-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>URL</th>
+                                <th>Messages Received</th>
+                                <th>Messages Sent</th>
+                                <th>Errors</th>
+                                <th>Last Seen</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${relays.map(relay => `
+                                <tr>
+                                    <td>
+                                        <span class="relay-status-dot ${relay.connected ? 'connected' : 'disconnected'}"></span>
+                                        ${relay.connected ? 'Connected' : 'Disconnected'}
+                                    </td>
+                                    <td><span class="relay-url">${relay.url}</span></td>
+                                    <td>${relay.messagesReceived || 0}</td>
+                                    <td>${relay.messagesSent || 0}</td>
+                                    <td>${relay.errors || 0}</td>
+                                    <td>${relay.lastSeenFormatted || 'Never'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                container.innerHTML = '<div class="empty-state">⚠️ Failed to load relays</div>';
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        checkAuth();
+    </script>
+</body>
+</html>

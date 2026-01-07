@@ -1,0 +1,32 @@
+{
+  "name": "zapai-dvm",
+  "version": "1.0.0",
+  "description": "ZapAI - Data Vending Machine specialized for ZapAI platform",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "chat": "node chat-test.js"
+  },
+  "keywords": [
+    "nostr",
+    "bot",
+    "ai",
+    "gemini"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@nostrify/nostrify": "npm:@jsr/nostrify__nostrify@^0.46.5",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "lmdb": "^3.4.3",
+    "nostr-tools": "^2.17.0",
+    "ws": "^8.18.3"
+  }
+}

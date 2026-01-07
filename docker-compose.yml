@@ -1,0 +1,49 @@
+services:
+  zapai-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zapai-dvm
+    restart: unless-stopped
+    user: "1000:1000"
+
+    # Always load env vars from local .env (prevents "variable is not set" warnings)
+    env_file:
+      - .env
+    
+    # Environment variables
+    environment:
+      BOT_NAME: ${BOT_NAME:-ZapAI}
+      NOSTR_RELAYS: ${NOSTR_RELAYS}
+      # Default 0 for fastest responses; override in .env if desired
+      BOT_RESPONSE_DELAY: ${BOT_RESPONSE_DELAY:-0}
+      WEB_PORT: ${WEB_PORT:-3000}
+
+      # Scalability
+      MAX_CONCURRENT: ${MAX_CONCURRENT:-10}
+      MAX_QUEUE_SIZE: ${MAX_QUEUE_SIZE:-10000}
+      RATE_LIMIT_MAX_TOKENS: ${RATE_LIMIT_MAX_TOKENS:-50}
+      RATE_LIMIT_REFILL_RATE: ${RATE_LIMIT_REFILL_RATE:-5}
+      QUEUE_TIMEOUT: ${QUEUE_TIMEOUT:-60000}
+
+      # Optional auth
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    
+    # Port mapping
+    ports:
+      - "${WEB_PORT:-3000}:${WEB_PORT:-3000}"
+    
+    # Volume for persistent data
+    volumes:
+      - ./data:/app/data
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    name: zapai-network
