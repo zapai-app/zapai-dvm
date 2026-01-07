@@ -74,6 +74,160 @@ export class NostrBot {
     this.relayPublishTimeoutMs = Number.isFinite(config.relayPublishTimeoutMs)
       ? config.relayPublishTimeoutMs
       : 8000;
+
+    // Public thread context (kind 1 mentions): best-effort fetch of root + replies
+    // Keep defaults conservative to avoid slowing down message processing.
+    this.publicThreadContextMaxReplies = Number.isFinite(parseInt(config.publicThreadContextMaxReplies))
+      ? parseInt(config.publicThreadContextMaxReplies)
+      : 30;
+    this.publicThreadContextTimeoutMs = Number.isFinite(parseInt(config.publicThreadContextTimeoutMs))
+      ? parseInt(config.publicThreadContextTimeoutMs)
+      : 2500;
+    this.publicThreadContextMaxCharsPerNote = Number.isFinite(parseInt(config.publicThreadContextMaxCharsPerNote))
+      ? parseInt(config.publicThreadContextMaxCharsPerNote)
+      : 800;
+  }
+
+  _normalizeText(s) {
+    if (typeof s !== 'string') return '';
+    return s.replace(/\s+/g, ' ').trim();
+  }
+
+  _truncate(s, maxLen) {
+    const t = this._normalizeText(s);
+    if (!maxLen || maxLen <= 0) return t;
+    if (t.length <= maxLen) return t;
+    return t.slice(0, Math.max(0, maxLen - 1)).trimEnd() + '…';
+  }
+
+  _getTagValues(tags, tagName) {
+    if (!Array.isArray(tags)) return [];
+    return tags.filter(t => Array.isArray(t) && t[0] === tagName && typeof t[1] === 'string').map(t => t[1]);
+  }
+
+  /**
+   * Parse NIP-10 threading tags.
+   * Returns { rootId, replyToId } best-effort.
+   */
+  _getThreadRefs(event) {
+    const tags = Array.isArray(event?.tags) ? event.tags : [];
+    const eTags = tags.filter(t => Array.isArray(t) && t[0] === 'e' && typeof t[1] === 'string');
+    const getMarker = (t) => (typeof t[3] === 'string' ? t[3] : (typeof t[2] === 'string' && ['root','reply','mention'].includes(t[2]) ? t[2] : null));
+
+    let rootId = null;
+    let replyToId = null;
+
+    for (const t of eTags) {
+      const marker = getMarker(t);
+      if (marker === 'root' && !rootId) rootId = t[1];
+      if (marker === 'reply' && !replyToId) replyToId = t[1];
+    }
+
+    // Fallbacks:
+    // - if no explicit root, use first e tag
+    // - if no reply marker, but there are e tags, treat the last e tag as the direct parent
+    if (!rootId && eTags.length > 0) rootId = eTags[0][1];
+    if (!replyToId && eTags.length > 0) replyToId = eTags[eTags.length - 1][1];
+
+    // If this event has no e tags, it's its own root.
+    if (!rootId && typeof event?.id === 'string') rootId = event.id;
+
+    return { rootId, replyToId };
+  }
+
+  async _fetchEventById(eventId, timeoutMs = this.publicThreadContextTimeoutMs) {
+    if (!eventId || typeof eventId !== 'string') return null;
+    const filter = { ids: [eventId], limit: 1 };
+
+    for (const { relay, url } of this.relays) {
+      try {
+        for await (const msg of relay.req([filter], { signal: AbortSignal.timeout(timeoutMs) })) {
+          if (msg[0] === 'EVENT') {
+            return msg[2];
+          }
+        }
+      } catch (e) {
+        logger.debug(`Thread fetch: failed to fetch event ${eventId.substring(0, 8)}... from ${url}: ${e?.message || e}`);
+      }
+    }
+
+    return null;
+  }
+
+  async _fetchRepliesForRoot(rootId, limit = this.publicThreadContextMaxReplies, timeoutMs = this.publicThreadContextTimeoutMs) {
+    if (!rootId || typeof rootId !== 'string') return [];
+    const filter = {
+      kinds: [1],
+      '#e': [rootId],
+      limit: Math.max(10, limit * 2),
+    };
+
+    const byId = new Map();
+
+    // Best-effort: union results from relays until we hit limit.
+    for (const { relay, url } of this.relays) {
+      if (byId.size >= limit) break;
+      try {
+        for await (const msg of relay.req([filter], { signal: AbortSignal.timeout(timeoutMs) })) {
+          if (msg[0] !== 'EVENT') continue;
+          const ev = msg[2];
+          if (!ev?.id || byId.has(ev.id)) continue;
+          byId.set(ev.id, ev);
+          if (byId.size >= limit) break;
+        }
+      } catch (e) {
+        logger.debug(`Thread fetch: failed to fetch replies for root ${rootId.substring(0, 8)}... from ${url}: ${e?.message || e}`);
+      }
+    }
+
+    return Array.from(byId.values());
+  }
+
+  /**
+   * Build a synthetic conversation history for a public thread:
+   * - Root note
+   * - Recent replies in chronological order (excluding the triggering event)
+   */
+  async buildPublicThreadHistory(triggerEvent) {
+    const { rootId } = this._getThreadRefs(triggerEvent);
+    if (!rootId) return [];
+
+    const [rootEvent, replies] = await Promise.all([
+      this._fetchEventById(rootId),
+      this._fetchRepliesForRoot(rootId),
+    ]);
+
+    const all = [];
+    if (rootEvent && rootEvent.kind === 1 && typeof rootEvent.content === 'string') {
+      all.push(rootEvent);
+    }
+    for (const r of replies) {
+      if (r && r.kind === 1 && typeof r.content === 'string') all.push(r);
+    }
+
+    const createdAtLimit = Number.isFinite(triggerEvent?.created_at) ? triggerEvent.created_at : null;
+
+    const filtered = all
+      .filter(ev => ev.id !== triggerEvent.id)
+      .filter(ev => (createdAtLimit ? ev.created_at <= createdAtLimit : true))
+      .filter(ev => this._normalizeText(ev.content).length > 0);
+
+    filtered.sort((a, b) => (a.created_at - b.created_at) || (a.id < b.id ? -1 : 1));
+
+    const toHistoryItem = (ev) => {
+      const ts = Number.isFinite(ev.created_at) ? new Date(ev.created_at * 1000).toISOString() : 'unknown-time';
+      const author = typeof ev.pubkey === 'string' ? ev.pubkey.substring(0, 8) : 'unknown';
+      const idShort = typeof ev.id === 'string' ? ev.id.substring(0, 8) : 'unknown';
+      const text = this._truncate(ev.content, this.publicThreadContextMaxCharsPerNote);
+      return {
+        message: `[Thread ${rootId.substring(0, 8)}] ${ts} ${author} (${idShort}): ${text}`,
+        isFromBot: false,
+        timestamp: Number.isFinite(ev.created_at) ? ev.created_at * 1000 : Date.now(),
+        messageType: 'thread_context',
+      };
+    };
+
+    return filtered.map(toHistoryItem);
   }
 
   _withTimeout(promise, ms, label = 'operation') {
@@ -795,7 +949,16 @@ export class NostrBot {
       // If session exists: filter by session ID
       // If no session: get last 100 messages for this user (ignore session)
       let conversationHistory;
-      if (sessionId) {
+      let threadRootId = null;
+      if (event.kind === 1) {
+        // For public mentions/replies, prefer the post thread as "history" so the bot
+        // understands what others already said in the same post.
+        // Also avoids leaking DM history into a public reply.
+        const refs = this._getThreadRefs(event);
+        threadRootId = refs?.rootId || null;
+        conversationHistory = await this.buildPublicThreadHistory(event);
+        logger.info(`Public thread context: root=${threadRootId ? threadRootId.substring(0, 8) : 'unknown'} (${conversationHistory.length} items)`);
+      } else if (sessionId) {
         conversationHistory = await this.db.getConversationBySession(event.pubkey, sessionId, 100);
         logger.info(`[Session: ${sessionId}] Retrieved ${conversationHistory.length} messages from session history for ${event.pubkey.substring(0, 8)}...`);
       } else {
@@ -836,7 +999,9 @@ export class NostrBot {
       // For DMs with a sessionId, reuse a per-session chat to reduce latency and token usage.
       const geminiOptions = (event.kind === 4 && sessionId)
         ? { conversationKey: `${event.pubkey}:${sessionId}` }
-        : {};
+        : (event.kind === 1 && threadRootId)
+          ? { conversationKey: `thread:${threadRootId}` }
+          : {};
       const response = await this.gemini.generateResponse(messageContent, conversationHistory, userContext, geminiOptions);
 
       // Optional delay (defaults to 0 for snappier UX)
@@ -992,12 +1157,16 @@ export class NostrBot {
    */
   async sendReply(originalEvent, content) {
     try {
+      const { rootId } = this._getThreadRefs(originalEvent);
+      const rootTagId = rootId || originalEvent.id;
+
       // Create reply event (kind 1)
       const eventTemplate = {
         kind: 1,
         content: content,
         tags: [
-          ['e', originalEvent.id, '', 'reply'], // Reply to event
+          ['e', rootTagId, '', 'root'], // Thread root
+          ['e', originalEvent.id, '', 'reply'], // Direct reply target
           ['p', originalEvent.pubkey], // Mention original author
         ],
         created_at: Math.floor(Date.now() / 1000),

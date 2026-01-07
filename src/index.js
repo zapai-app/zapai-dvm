@@ -81,6 +81,17 @@ const bot = new NostrBot({
     ? parseInt(process.env.USER_METADATA_FAST_TIMEOUT_MS)
     : 300,
   
+  // Public thread context (kind 1 mentions): fetch root + recent replies as context
+  publicThreadContextMaxReplies: Number.isFinite(parseInt(process.env.PUBLIC_THREAD_CONTEXT_MAX_REPLIES))
+    ? parseInt(process.env.PUBLIC_THREAD_CONTEXT_MAX_REPLIES)
+    : 30,
+  publicThreadContextTimeoutMs: Number.isFinite(parseInt(process.env.PUBLIC_THREAD_CONTEXT_TIMEOUT_MS))
+    ? parseInt(process.env.PUBLIC_THREAD_CONTEXT_TIMEOUT_MS)
+    : 2500,
+  publicThreadContextMaxCharsPerNote: Number.isFinite(parseInt(process.env.PUBLIC_THREAD_CONTEXT_MAX_CHARS_PER_NOTE))
+    ? parseInt(process.env.PUBLIC_THREAD_CONTEXT_MAX_CHARS_PER_NOTE)
+    : 800,
+  
   // Queue configuration
   maxConcurrent: parseInt(process.env.MAX_CONCURRENT) || 10,
   maxQueueSize: parseInt(process.env.MAX_QUEUE_SIZE) || 10000,
